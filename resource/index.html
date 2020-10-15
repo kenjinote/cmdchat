@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="X-UA-Compatible" content="IE=11">
+    <style>
+        body {
+            background-color: #83aff0;
+            text-align: right;
+        }
+
+        .result {
+            width: 100%;
+            margin: 10px 0;
+            overflow: hidden;
+            text-align: left;
+        }
+
+            .result .icon {
+                float: left;
+                margin-right: -30px;
+                width: 58px;
+            }
+
+                .result .icon img {
+                    width: 58px;
+                    height: auto;
+                    background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADoAAAA6CAYAAADhu0ooAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyJJREFUeNrsmz1o20AUx59E0hgKJZRsbSl06OypQ8ZslQuBOnQJdDB4b2jp12K89CO0pHsgQyFLiUsDtbtlzJApc4dCv7ZQQiHgJKXq/8XPRY4l2ZLl6PnkB39eFEvn/893ujvpJOvbzgdKMtYau1eQcp5/PYcKPQ6rQ088282Sk/+epC8rKVAAXkLKQ2+hiwMW9wu6C+0C+KcKUAA+RrKheegGJRs70Cb0F8AvUgEF4EMBK9LZRI3BAbx8JqAAtJAeQMuUTvAP/ArAbpSD7IiQDtI+9JLSC/7uffGSPCgKvim94wVuCSmCWuKhLp6SA0WB3NE0SF80xNvgoCjoDtIG6Y0N8RgfFAXc5gRNKAZlb2viNTqonOzr0HnSH+xxPayD8h1e5IB6pVKhUYpqtcqpgKGn0W+NftRg3LKsE/W7Hebd9qnNe0jHGkBd1z1Rv9sSx8IQDIodniKtQOdodIO9rwhLNyg+4B1mw5qQVgXErDB11eh9yCFzwhGmLtCDlKd2w5gqHnSAooqvy/VkrE7C73MlMS9s/2v0GjTXL2T73DjdAyqEnRM2skF8FXk17jgX9rcS2FVm5Bqdgi4PY7BXAstsUwwa20lY01UG6/LMfy9qTbWNBzXdoP17QYeMiYPG3kSc8zOqoX5+kGGfp9x0i2R+FBm0mQHQpk0ZiTHoGHQMqh80lwHOHIPWMgBaY9ByBkDLDDqTAdAZm8y6fRI43WbQQ+iHwZDMdmiXnPxXw8/TMjO2x9Ev0JaBkFvC1powgPgztZ7+MC02ha1jZsRLb65BkC55ljy9oK9J5/J93GgIUycoqvgIadsg0G1h6p7U44NnSEvQ0QgDsvclYQm+esEOb5AmOxq7LEFo1amYFIa+LtNujXCN+noPfEROnmOojdBlHN/kK/o9vxB64S0HLJJn6U1xsMfFIMiedxhw4HtO0B/FkOytJF7j30pBAe+QFhSDLohHGghUYHl6qHHZ3xFvlAiowH6i1rPxv1OeKrrioSCeKFFQTwc1DT1KEZS/ezqs44k0vPQK4x819wE2++UBH2CzXwfxAVb5gs8/AQYAqGyxcXbZvkMAAAAASUVORK5CYII=);
+                    background-repeat: no-repeat;
+                }
+
+        .output {
+            display: inline-block;
+            position: relative;
+            margin: 0 0 0 50px;
+            padding: 12px;
+            border-radius: 12px;
+            background: #edf1ee;
+        }
+
+            .output:after {
+                content: "";
+                display: inline-block;
+                position: absolute;
+                top: 3px;
+                left: -19px;
+                border: 8px solid transparent;
+                border-right: 18px solid #edf1ee;
+                -webkit-transform: rotate(35deg);
+                transform: rotate(35deg);
+            }
+
+            .output pre {
+                margin: 0;
+                padding: 0;
+                font-family: Consolas;
+            }
+
+        .input {
+            margin: 10px 0;
+        }
+
+            .input pre {
+                display: inline-block;
+                position: relative;
+                margin: 0 19px 0 0;
+                padding: 12px;
+                border-radius: 12px;
+                background: #80ff00;
+                font-family: Consolas;
+            }
+
+                .input pre:after {
+                    content: "";
+                    position: absolute;
+                    top: 3px;
+                    right: -19px;
+                    border: 8px solid transparent;
+                    border-left: 18px solid #80ff00;
+                    -webkit-transform: rotate(-35deg);
+                    transform: rotate(-35deg);
+                }
+    </style>
+</head>
+<body>
+</body>
+</html>
