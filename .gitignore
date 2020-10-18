@@ -7,3 +7,6 @@
 /cmdchat.aps
 /cmdchat.vcxproj.user
 /cmdchat.vcxproj.filters
+/Debug
+/Release
+/x64/Release
