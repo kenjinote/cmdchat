@@ -59,53 +59,6 @@ BOOL GetScaling(HWND hWnd, UINT* pnX, UINT* pnY)
 	return bSetScaling;
 }
 
-LPWSTR GetCurrentWorkingDirectory(HANDLE hProcess)
-{
-	struct UPP {
-		long MaximumLength;
-		long Length;
-		long Flags;
-		long DebugFlags;
-		HANDLE ConsoleHandle;
-		long ConsoleFlags;
-		HANDLE StdInputHandle;
-		HANDLE StdOuputHandle;
-		HANDLE StdErrorHandle;
-		UNICODE_STRING CurrentDirectoryPath;
-		HANDLE CurrentDirectoryHandle;
-		UNICODE_STRING ImagePathName;
-		UNICODE_STRING CommandLine;
-	};
-	LPWSTR lpszReturn = 0;
-	HMODULE hModule = GetModuleHandleW(L"ntdll");
-	if (hModule) {
-		typedef NTSTATUS(__stdcall* fnNtQueryInformationProcess)(HANDLE, PROCESSINFOCLASS, PVOID, ULONG, PULONG);
-		fnNtQueryInformationProcess NtQueryInformationProcess = fnNtQueryInformationProcess(GetProcAddress(hModule, "NtQueryInformationProcess"));
-		if (NtQueryInformationProcess) {
-			PROCESS_BASIC_INFORMATION pbi = { 0 };
-			ULONG len = 0;
-			if (NtQueryInformationProcess(hProcess, ProcessBasicInformation, &pbi, sizeof(pbi), &len) == 0 && len > 0) {
-				SIZE_T nRead = 0;
-				PEB peb = { 0 };
-				UPP upp = { 0 };
-				if (ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), &nRead) && nRead > 0 &&
-					ReadProcessMemory(hProcess, peb.ProcessParameters, &upp, sizeof(upp), &nRead) && nRead > 0) {
-					PVOID buffer = upp.CurrentDirectoryPath.Buffer;
-					USHORT length = upp.CurrentDirectoryPath.Length;
-					lpszReturn = (LPWSTR)GlobalAlloc(0, (length / 2 + 1) * sizeof(WCHAR));
-					if (!ReadProcessMemory(hProcess, buffer, lpszReturn, length, &nRead) || nRead == 0)
-					{
-						GlobalFree(lpszReturn);
-						lpszReturn = 0;
-					}
-					lpszReturn[length / 2] = 0;
-				}
-			}
-		}
-	}
-	return lpszReturn;
-}
-
 LPWSTR RunCommand(LPCWSTR lpszCommand)
 {
 	return CmdProcess::Get()->RunCommand(lpszCommand);
@@ -197,7 +150,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	switch (msg)
 	{
 	case WM_CREATE:
-		CmdProcess::Get()->Create();
+		CmdProcess::Get()->Create(hWnd);
 		hBrush = CreateSolidBrush(RGB(200, 219, 249));
 		hEdit = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", 0, WS_VISIBLE | WS_CHILD | ES_AUTOHSCROLL, 0, 0, 0, 0, hWnd, 0, ((LPCREATESTRUCT)lParam)->hInstance, 0);
 		SendMessageW(hEdit, EM_SETCUEBANNER, TRUE, (LPARAM)L"コマンドを入力");

@@ -38,7 +38,7 @@ namespace
 		return str;
 	}
 
-	void TrimFirstLastLine(std::wstring* pwstr)
+	void TrimStringLine(std::wstring* pwstr)
 	{
 		const size_t last = pwstr->find_last_of(L'\n');
 		if (last != std::wstring::npos) {
@@ -50,19 +50,35 @@ namespace
 			pwstr->erase(0, first);
 		}
 	}
+
+	HANDLE StartThread(_beginthreadex_proc_type startAddress, void* argList)
+	{
+		return reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, startAddress, argList, 0, nullptr));
+	}
+
+	unsigned __stdcall ThreadCmdProcess(void* phProcess)
+	{
+		HANDLE hProcess = reinterpret_cast<HANDLE*>(phProcess);
+		WaitForSingleObject(hProcess, INFINITE);
+		CmdProcess::Get()->NotifyExitProcess();
+		return 0;
+	}
 }
 
 CmdProcess::CmdProcess() :
+	hwnd_{ NULL },
 	hProcess_{ NULL },
 	readPipeStdIn_{ NULL },
 	writePipeStdIn_{ NULL },
 	readPipeStdOut_{ NULL },
-	writePipeStdOut_{ NULL }
+	writePipeStdOut_{ NULL },
+	threadProcess_{ NULL }
 {
 }
 
 CmdProcess::~CmdProcess()
 {
+	Exit();
 }
 
 CmdProcess* CmdProcess::Get()
@@ -71,7 +87,7 @@ CmdProcess* CmdProcess::Get()
 	return &singleton;
 }
 
-BOOL CmdProcess::Create()
+BOOL CmdProcess::Create(HWND hwnd)
 {
 	WCHAR szCmdExePath[MAX_PATH] = { 0 };
 	if (GetEnvironmentVariableW(L"ComSpec", szCmdExePath, _countof(szCmdExePath)) == 0)
@@ -123,22 +139,30 @@ BOOL CmdProcess::Create()
 
 	CloseHandle(pi.hThread);
 
+	HANDLE threadProcess = StartThread(&ThreadCmdProcess, pi.hProcess);
+	if (threadProcess == NULL) {
+		CloseHandle(readPipeStdIn);
+		CloseHandle(writePipeStdIn);
+		CloseHandle(readPipeStdOut);
+		CloseHandle(writePipeStdOut);
+		return FALSE;
+	}
+
+	hwnd_ = hwnd;
 	hProcess_ = pi.hProcess;
 	readPipeStdIn_ = readPipeStdIn;
 	writePipeStdIn_ = writePipeStdIn;
 	readPipeStdOut_ = readPipeStdOut;
 	writePipeStdOut_ = writePipeStdOut;
+	threadProcess_ = threadProcess;
 
 	return TRUE;
 }
 
 BOOL CmdProcess::Exit()
 {
-	if (hProcess_)
-	{
-		TerminateProcess(hProcess_, 0);
-		CloseHandle(hProcess_);
-		hProcess_ = NULL;
+	if (hwnd_) {
+		hwnd_ = NULL;
 	}
 
 	if (readPipeStdIn_) {
@@ -159,6 +183,13 @@ BOOL CmdProcess::Exit()
 	if (writePipeStdOut_) {
 		CloseHandle(writePipeStdOut_);
 		writePipeStdOut_ = NULL;
+	}
+
+	if (hProcess_)
+	{
+		TerminateProcess(hProcess_, 0);
+		CloseHandle(hProcess_);
+		hProcess_ = NULL;
 	}
 
 	return TRUE;
@@ -221,7 +252,7 @@ LPWSTR CmdProcess::RunCommand(LPCWSTR lpszCommand)
 	} while (!end);
 	if (str.empty() == false) {
 		std::wstring wstr = ToWString(str);
-		TrimFirstLastLine(&wstr);
+		TrimStringLine(&wstr);
 		lpszReturn = static_cast<LPWSTR>(GlobalAlloc(0, (wstr.length() + 1) * sizeof(WCHAR)));
 		if (lpszReturn) {
 			wcsncpy_s(lpszReturn, wstr.length() + 1, wstr.c_str(), wstr.length() + 1);
@@ -229,4 +260,11 @@ LPWSTR CmdProcess::RunCommand(LPCWSTR lpszCommand)
 	}
 
 	return lpszReturn;
+}
+
+void CmdProcess::NotifyExitProcess()
+{
+	if (hwnd_) {
+		PostMessage(hwnd_, WM_CLOSE, 0, 0);
+	}
 }
