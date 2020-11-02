@@ -162,12 +162,14 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CmdProcess.cpp" />
     <ClCompile Include="Source.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="resource\index.html" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CmdProcess.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>

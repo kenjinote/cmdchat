@@ -6,6 +6,7 @@
 #include <string>
 #include <winternl.h>
 #include "resource.h"
+#include "CmdProcess.h"
 
 #define DEFAULT_DPI 96
 #define SCALEX(X) MulDiv(X, uDpiX, DEFAULT_DPI)
@@ -107,67 +108,7 @@ LPWSTR GetCurrentWorkingDirectory(HANDLE hProcess)
 
 LPWSTR RunCommand(LPCWSTR lpszCommand)
 {
-	if (!lpszCommand) return 0;
-	LPWSTR lpszReturn = 0;
-	HANDLE readPipe;
-	HANDLE writePipe;
-	SECURITY_ATTRIBUTES sa = { 0 };
-	sa.nLength = sizeof(sa);
-	sa.bInheritHandle = TRUE;
-	if (CreatePipe(&readPipe, &writePipe, &sa, 0) == 0) {
-		return 0;
-	}
-	STARTUPINFOW si = { 0 };
-	si.cb = sizeof(si);
-	si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
-	si.hStdOutput = writePipe;
-	si.hStdError = writePipe;
-	si.wShowWindow = SW_HIDE;
-	LPWSTR lpszSendBuffer = (LPWSTR)GlobalAlloc(0, (lstrlenW(lpszCommand) + 256) * sizeof(WCHAR));
-	if (lpszSendBuffer) {
-		WCHAR szCmdExePath[MAX_PATH] = { 0 };
-		GetEnvironmentVariableW(L"ComSpec", szCmdExePath, _countof(szCmdExePath));
-		lstrcpyW(lpszSendBuffer, szCmdExePath);
-		lstrcatW(lpszSendBuffer, L" /K ");
-		lstrcatW(lpszSendBuffer, lpszCommand);
-		PROCESS_INFORMATION pi = { 0 };
-		if (CreateProcessW(NULL, lpszSendBuffer, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
-			CHAR readBuf[1025];
-			std::string str;
-			BOOL end = FALSE;
-			do {
-				WaitForSingleObject(pi.hProcess, 1000);
-				DWORD totalLen, len;
-				if (PeekNamedPipe(readPipe, NULL, 0, NULL, &totalLen, NULL) && totalLen > 0) {
-					if (ReadFile(readPipe, readBuf, sizeof(readBuf) - 1, &len, NULL) && len > 0) {
-						readBuf[len] = 0;
-						str += readBuf;
-					}
-				}
-				else
-				{
-					end = TRUE;
-				}
-			} while (!end);
-			const int nLength = (int)str.length();
-			if (nLength) {
-				lpszReturn = (LPWSTR)GlobalAlloc(0, (nLength + 1) * sizeof(WCHAR));
-				MultiByteToWideChar(CP_THREAD_ACP, 0, str.c_str(), -1, lpszReturn, nLength + 1);
-			}
-			CloseHandle(pi.hThread);
-			{
-				LPWSTR lpszCurrentDirectory = GetCurrentWorkingDirectory(pi.hProcess);
-				SetCurrentDirectoryW(lpszCurrentDirectory);
-				GlobalFree((HGLOBAL)lpszCurrentDirectory);
-			}
-			TerminateProcess(pi.hProcess, 0);
-			CloseHandle(pi.hProcess);
-		}
-		GlobalFree(lpszSendBuffer);
-	}
-	CloseHandle(writePipe);
-	CloseHandle(readPipe);
-	return lpszReturn;
+	return CmdProcess::Get()->RunCommand(lpszCommand);
 }
 
 LPWSTR HtmlEncode(LPCWSTR lpText)
@@ -256,6 +197,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	switch (msg)
 	{
 	case WM_CREATE:
+		CmdProcess::Get()->Create();
 		hBrush = CreateSolidBrush(RGB(200, 219, 249));
 		hEdit = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", 0, WS_VISIBLE | WS_CHILD | ES_AUTOHSCROLL, 0, 0, 0, 0, hWnd, 0, ((LPCREATESTRUCT)lParam)->hInstance, 0);
 		SendMessageW(hEdit, EM_SETCUEBANNER, TRUE, (LPARAM)L"コマンドを入力");
@@ -431,6 +373,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		pWB2.Release();
 		DeleteObject(hBrush);
 		DeleteObject(hFont);
+		CmdProcess::Get()->Exit();
 		PostQuitMessage(0);
 		break;
 	default:
