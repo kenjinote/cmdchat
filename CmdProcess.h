@@ -12,8 +12,13 @@ public:
 	static CmdProcess* Get();
 	BOOL Create(HWND hwnd);
 	BOOL Exit();
-	LPWSTR RunCommand(LPCWSTR lpszCommand);
+	BOOL RunCommand(LPCWSTR lpszCommand);
+
+private:
 	void NotifyExitProcess();
+	void ReadStdOut();
+	static unsigned int __stdcall ThreadCmdProcess(void* phProcess);
+	static unsigned int __stdcall ThreadReadStdOut(void*);
 
 private:
 	HWND hwnd_;
@@ -24,4 +29,6 @@ private:
 	HANDLE writePipeStdOut_;
 
 	HANDLE threadProcess_;
+	HANDLE threadReadStdOut_;
+	HANDLE eventExit_;
 };

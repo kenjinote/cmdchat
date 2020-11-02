@@ -4,8 +4,10 @@
 #include <atlbase.h>
 #include <atlhost.h>
 #include <string>
+#include <vector>
 #include <winternl.h>
 #include "resource.h"
+#include "ChatData.h"
 #include "CmdProcess.h"
 
 #define DEFAULT_DPI 96
@@ -59,62 +61,32 @@ BOOL GetScaling(HWND hWnd, UINT* pnX, UINT* pnY)
 	return bSetScaling;
 }
 
-LPWSTR RunCommand(LPCWSTR lpszCommand)
+std::wstring HtmlEncode(const std::wstring& text)
 {
-	return CmdProcess::Get()->RunCommand(lpszCommand);
-}
+	std::wstring html;
 
-LPWSTR HtmlEncode(LPCWSTR lpText)
-{
-	int i, m;
-	LPWSTR ptr;
-	const int n = lstrlenW(lpText);
-	for (i = 0, m = 0; i < n; i++)
+	for (auto it = text.cbegin(); it != text.cend(); ++it)
 	{
-		switch (lpText[i])
+		switch (*it)
 		{
 		case L'>':
-		case L'<':
-			m += 4;
+			html += L"&gt;";
 			break;
-		case L'&':
-			m += 5;
-			break;
-		default:
-			m++;
-		}
-	}
-	if (n == m)return 0;
-	LPWSTR lpOutText = (LPWSTR)GlobalAlloc(0, sizeof(WCHAR) * (m + 1));
-	for (i = 0, ptr = lpOutText; i <= n; i++)
-	{
-		switch (lpText[i])
-		{
-		case L'>':
-			lstrcpyW(ptr, L"&gt;");
-			ptr += lstrlenW(ptr);
-			break;
-		case L'<':
-			lstrcpyW(ptr, L"&lt;");
-			ptr += lstrlenW(ptr);
-			break;
-		case L'&':
-			lstrcpyW(ptr, L"&amp;");
-			ptr += lstrlenW(ptr);
-			break;
-		default:
-			*ptr++ = lpText[i];
-		}
-	}
-	return lpOutText;
-}
 
-DWORD WINAPI ThreadFunc(LPVOID p)
-{
-	HWND hWnd = (HWND)p;
-	LPCWSTR lpszCommand = (LPCWSTR)GetWindowLongPtr(hWnd, DWLP_USER);
-	PostMessageW(hWnd, WM_APP, 0, (LPARAM)RunCommand(lpszCommand));
-	ExitThread(0);
+		case L'<':
+			html += L"&lt;";
+			break;
+
+		case L'&':
+			html += L"&amp;";
+			break;
+
+		default:
+			html += *it;
+		}
+	}
+
+	return html;
 }
 
 VOID execBrowserCommand(IHTMLDocument2* pDocument, LPCWSTR lpszCommand)
@@ -209,31 +181,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		CloseHandle(hThread);
 		hThread = 0;
 		{
-			LPCWSTR lpszReturnString = (LPWSTR)lParam;
-			if (lpszReturnString) {
-				LPWSTR lpszReturnString2 = HtmlEncode(lpszReturnString);
-				if (lpszReturnString2) {
-					GlobalFree((HGLOBAL)lpszReturnString);
-					lpszReturnString = lpszReturnString2;
-				}
-				const int nHtmlLength = lstrlenW(lpszReturnString) + 256;
-				LPWSTR lpszHtml = (LPWSTR)GlobalAlloc(0, nHtmlLength * sizeof(WCHAR));
-				lstrcpyW(lpszHtml, L"<div class=\"result\"><div class=\"icon\"><img></div><div class=\"chatting\"><div class=\"output\"><pre>");
-				lstrcatW(lpszHtml, lpszReturnString);
-				GlobalFree((HGLOBAL)lpszReturnString);
-				lstrcatW(lpszHtml, L"</pre></div></div></div>");
+			std::wstring output;
+			while (ChatData::Get()->PopFrontOutput(&output)) {
+				const std::wstring outputHtml = HtmlEncode(output);
+				std::wstring html;
+				html += L"<div class=\"result\"><div class=\"icon\"><img></div><div class=\"chatting\"><div class=\"output\"><pre>";
+				html += outputHtml;
+				html += L"</pre></div></div></div>";
+
 				CComQIPtr<IHTMLElement>pElementBody;
-				pDocument->get_body((IHTMLElement**)&pElementBody);
+				pDocument->get_body(&pElementBody);
 				if (pElementBody) {
-					BSTR where = SysAllocString(L"beforeEnd");
-					BSTR html = SysAllocString(lpszHtml);
-					pElementBody->insertAdjacentHTML(where, html);
-					SysFreeString(where);
-					SysFreeString(html);
+					BSTR whereBStr = SysAllocString(L"beforeEnd");
+					BSTR htmlBStr = SysAllocString(html.c_str());
+					pElementBody->insertAdjacentHTML(whereBStr, htmlBStr);
+					SysFreeString(whereBStr);
+					SysFreeString(htmlBStr);
 					pElementBody.Release();
 					ScrollBottom(pDocument);
 				}
-				GlobalFree(lpszHtml);
 			}
 		}
 		EnableWindow(hBrowser, TRUE);
@@ -243,42 +209,36 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	case WM_COMMAND:
 		if (LOWORD(wParam) == ID_RUN)
 		{
-			if (GetFocus() != hEdit)
+			if (GetFocus() != hEdit) {
 				SetFocus(hEdit);
+			}
 			const int nTextLength = GetWindowTextLength(hEdit);
 			if (nTextLength > 0) {
-				GlobalFree(lpszCommand);
-				lpszCommand = (LPWSTR)GlobalAlloc(0, (nTextLength + 1) * sizeof(WCHAR));
-				if (lpszCommand) {
-					GetWindowTextW(hEdit, lpszCommand, nTextLength + 1);
-					SetWindowLongPtrW(hWnd, DWLP_USER, (LONG_PTR)lpszCommand);
-					LPWSTR lpszCommand2 = HtmlEncode(lpszCommand);
-					UINT nHtmlLength = (lpszCommand2 ? lstrlenW(lpszCommand2) : nTextLength) + 256;
-					LPWSTR lpszHtml = (LPWSTR)GlobalAlloc(0, nHtmlLength * sizeof(WCHAR));
-					if (lpszHtml) {
-						lstrcpyW(lpszHtml, L"<div class=\"input\"><pre>");
-						lstrcatW(lpszHtml, lpszCommand2 ? lpszCommand2 : lpszCommand);
-						lstrcatW(lpszHtml, L"</pre></div>");
-						CComQIPtr<IHTMLElement>pElementBody;
-						pDocument->get_body((IHTMLElement**)&pElementBody);
-						if (pElementBody) {
-							BSTR where = SysAllocString(L"beforeEnd");
-							BSTR html = SysAllocString(lpszHtml);
-							pElementBody->insertAdjacentHTML(where, html);
-							SysFreeString(where);
-							SysFreeString(html);
-							pElementBody.Release();
-							ScrollBottom(pDocument);
-						}
-						GlobalFree(lpszHtml);
-						SetWindowText(hEdit, 0);
-						DWORD dwParam;
-						EnableWindow(hBrowser, FALSE);
-						EnableWindow(hEdit, FALSE);
-						hThread = CreateThread(0, 0, ThreadFunc, (LPVOID)hWnd, 0, &dwParam);
-					}
-					GlobalFree((HGLOBAL)lpszCommand2);
+				std::vector<wchar_t> vecCommand(nTextLength + 1, L'\0');
+				GetWindowTextW(hEdit, &vecCommand.front(), nTextLength + 1);
+				const std::wstring command = &vecCommand.front();
+				const std::wstring commandHtml = HtmlEncode(command);
+				std::wstring html;
+				html += L"<div class=\"input\"><pre>";
+				html += commandHtml;
+				html += L"</pre></div>";
+
+				CComQIPtr<IHTMLElement>pElementBody;
+				pDocument->get_body(&pElementBody);
+				if (pElementBody) {
+					BSTR whereBStr = SysAllocString(L"beforeEnd");
+					BSTR htmlBStr = SysAllocString(html.c_str());
+					pElementBody->insertAdjacentHTML(whereBStr, htmlBStr);
+					SysFreeString(whereBStr);
+					SysFreeString(htmlBStr);
+					pElementBody.Release();
+					ScrollBottom(pDocument);
 				}
+				SetWindowTextW(hEdit, 0);
+				EnableWindow(hBrowser, FALSE);
+				EnableWindow(hEdit, FALSE);
+
+				CmdProcess::Get()->RunCommand(command.c_str());
 			}
 		}
 		else if (LOWORD(wParam) == ID_COPY) {

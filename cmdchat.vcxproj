@@ -162,15 +162,25 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ChatData.cpp" />
     <ClCompile Include="CmdProcess.cpp" />
+    <ClCompile Include="CriticalSection.cpp" />
+    <ClCompile Include="SingleLock.cpp" />
     <ClCompile Include="Source.cpp" />
+    <ClCompile Include="ISyncObject.cpp" />
+    <ClCompile Include="SyncObject.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="resource\index.html" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ChatData.h" />
     <ClInclude Include="CmdProcess.h" />
+    <ClInclude Include="CriticalSection.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="SingleLock.h" />
+    <ClInclude Include="ISyncObject.h" />
+    <ClInclude Include="SyncObject.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="cmdchat.rc" />
