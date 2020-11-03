@@ -117,8 +117,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	static HBRUSH hBrush;
 	static HFONT hFont;
 	static UINT uDpiX = DEFAULT_DPI, uDpiY = DEFAULT_DPI;
-	static HANDLE hThread;
-	static LPWSTR lpszCommand;
 	switch (msg)
 	{
 	case WM_CREATE:
@@ -177,9 +175,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		SetFocus(hEdit);
 		break;
 	case WM_APP:
-		WaitForSingleObject(hThread, INFINITE);
-		CloseHandle(hThread);
-		hThread = 0;
 		{
 			std::wstring output;
 			while (ChatData::Get()->PopFrontOutput(&output)) {
@@ -281,7 +276,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		DestroyWindow(hWnd);
 		break;
 	case WM_DESTROY:
-		GlobalFree(lpszCommand);
 		pDocument.Release();
 		pWB2.Release();
 		DeleteObject(hBrush);
@@ -295,7 +289,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow)
+int WINAPI wWinMain(
+	_In_ HINSTANCE hInstance,
+	_In_opt_ HINSTANCE hPrevInstance,
+	_In_ LPWSTR lpCmdLine,
+	_In_ int nShowCmd
+)
 {
 	if (FAILED(CoInitialize(NULL)))
 	{
