@@ -31,4 +31,6 @@ private:
 	HANDLE threadProcess_;
 	HANDLE threadReadStdOut_;
 	HANDLE eventExit_;
+
+	BOOL commandLineErase_;
 };

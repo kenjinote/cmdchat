@@ -167,7 +167,7 @@ namespace
 		return str;
 	}
 
-	void TrimStringLine(std::wstring* pwstr)
+	void TrimStringLine(std::wstring* pwstr, BOOL commandLineErase)
 	{
 		const size_t last = pwstr->find_last_of(L'\n');
 		if (last != std::wstring::npos) {
@@ -176,7 +176,9 @@ namespace
 
 		const size_t first = pwstr->find_first_of(L'\n');
 		if (first != std::wstring::npos) {
-			pwstr->erase(0, first);
+			if (commandLineErase) {
+				pwstr->erase(0, first);
+			}
 		}
 	}
 
@@ -196,7 +198,8 @@ CmdProcess::CmdProcess() :
 	writePipeStdOut_{ NULL },
 	threadProcess_{ NULL },
 	threadReadStdOut_{ NULL },
-	eventExit_{ NULL }
+	eventExit_{ NULL },
+	commandLineErase_{ FALSE }
 {
 }
 
@@ -344,6 +347,8 @@ BOOL CmdProcess::RunCommand(LPCWSTR lpszCommand)
 		return FALSE;
 	}
 
+	commandLineErase_ = TRUE;
+
 	return TRUE;
 }
 
@@ -425,7 +430,11 @@ void CmdProcess::ReadStdOut()
 					std::string str(buffers.cbegin(), buffers.cend());
 					buffers.clear();
 					std::wstring wstr = ToWString(str);
-					TrimStringLine(&wstr);
+					TrimStringLine(&wstr, commandLineErase_);
+					if (commandLineErase_ == TRUE) {
+						commandLineErase_ = FALSE;
+					}
+
 					ChatData::Get()->PushBackOutput(wstr);
 					PostMessageW(hwnd_, WM_APP, 0, 0);
 				}
